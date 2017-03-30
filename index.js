@@ -67,6 +67,7 @@ const ScrollableTabView = React.createClass({
   },
 
   componentDidMount() {
+    this.tabHeights = [];
     this.setTimeout(() => {
       InteractionManager.runAfterInteractions(() => {
         if (Platform.OS === 'android') {
@@ -171,20 +172,35 @@ const ScrollableTabView = React.createClass({
       alwaysBounceVertical={false}
       keyboardDismissMode="on-drag"
       {...this.props.contentProps}
+      style={(typeof this.tabHeights !== 'undefined' && typeof this.tabHeights[this.state.currentPage] !== 'undefined' &&
+              this.tabHeights[this.state.currentPage] > 0) && {maxHeight: this.tabHeights[this.state.currentPage]}}
       >
       {scenes}
     </Animated.ScrollView>;
   },
 
+  _calculeTabHeight(tabNumber, evt, tabDynamic){
+      let height = evt.nativeEvent.layout.height;
+      if(this.tabHeights.indexOf(height) === -1){
+        if(height > 0 && tabDynamic === false ){
+          this.tabHeights[tabNumber] = height;
+        }
+      }
+  },
+
   _composeScenes() {
     return this._children().map((child, idx) => {
       let key = this._makeSceneKey(child, idx);
+      let dynamic = (child.props.tabDynamic) ? child.props.tabDynamic : false;
       return <SceneComponent
         key={child.key}
         shouldUpdated={this._shouldRenderSceneKey(idx, this.state.currentPage)}
-        style={{width: this.state.containerWidth, }}
+        style={{width: this.state.containerWidth}}
       >
+
+      <View onLayout={(e) => this._calculeTabHeight(idx, e, dynamic)}>
         {this._keyExists(this.state.sceneKeys, key) ? child : <View tabLabel={child.props.tabLabel}/>}
+        </View>
       </SceneComponent>;
     });
   },
@@ -219,7 +235,7 @@ const ScrollableTabView = React.createClass({
   },
 
   _handleLayout(e) {
-    const { width, } = e.nativeEvent.layout;
+    const { width, height } = e.nativeEvent.layout;
 
     if (Math.round(width) !== Math.round(this.state.containerWidth)) {
       this.setState({ containerWidth: width, });
